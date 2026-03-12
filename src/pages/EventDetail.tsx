@@ -169,22 +169,22 @@ export function EventDetailPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <p className="text-sm text-gray-500">Inscrições</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total_registrations}</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{stats.registrations.total}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <p className="text-sm text-gray-500">Confirmadas</p>
-            <p className="text-2xl font-bold text-green-600 mt-1">{stats.confirmed_registrations}</p>
+            <p className="text-2xl font-bold text-green-600 mt-1">{stats.registrations.confirmed}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <p className="text-sm text-gray-500">Receita total</p>
             <p className="text-2xl font-bold text-gray-900 mt-1">
-              R$ {stats.total_revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              R$ {(stats.financial.total_revenue ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <p className="text-sm text-gray-500">Sua receita</p>
             <p className="text-2xl font-bold text-[#07202f] mt-1">
-              R$ {stats.partner_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              R$ {(stats.financial.total_partner_amount ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
         </div>

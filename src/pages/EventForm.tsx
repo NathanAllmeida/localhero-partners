@@ -1,17 +1,21 @@
-import { useState, useEffect, type FormEvent } from 'react'
+import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
-import { createEvent, getEvent, updateEvent, type Event } from '@/services/events'
+import { ArrowLeft, Upload, X } from 'lucide-react'
+import { createEvent, getEvent, updateEvent, uploadBanner, type Event } from '@/services/events'
 import { ApiError } from '@/lib/api'
 
 export function EventFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const isEditing = !!id
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [bannerFile, setBannerFile] = useState<File | null>(null)
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null)
+  const [existingBanner, setExistingBanner] = useState<string | null>(null)
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -51,11 +55,29 @@ export function EventFormPage() {
             longitude: e.longitude ? String(e.longitude) : '',
             max_radius_meters: e.max_radius_meters ? String(e.max_radius_meters) : '',
           })
+          if (e.banner_image) {
+            setExistingBanner(e.banner_image)
+          }
         })
         .catch(() => setError('Erro ao carregar evento'))
         .finally(() => setLoading(false))
     }
   }, [id, isEditing])
+
+  function handleBannerSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setBannerFile(file)
+    setBannerPreview(URL.createObjectURL(file))
+    setExistingBanner(null)
+  }
+
+  function removeBanner() {
+    setBannerFile(null)
+    setBannerPreview(null)
+    setExistingBanner(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -83,14 +105,20 @@ export function EventFormPage() {
     }
 
     try {
+      let eventId: number
       if (isEditing) {
         await updateEvent(Number(id), payload)
+        eventId = Number(id)
       } else {
         const res = await createEvent(payload)
-        navigate(`/events/${res.data.event.id}`)
-        return
+        eventId = res.data.event.id
       }
-      navigate(`/events/${id}`)
+
+      if (bannerFile) {
+        await uploadBanner(eventId, bannerFile)
+      }
+
+      navigate(`/events/${eventId}`)
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message)
@@ -114,6 +142,8 @@ export function EventFormPage() {
     )
   }
 
+  const previewUrl = bannerPreview || existingBanner
+
   return (
     <div className="max-w-3xl">
       <button
@@ -132,6 +162,64 @@ export function EventFormPage() {
         {error && (
           <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>
         )}
+
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+          <h2 className="text-lg font-semibold text-gray-900">Banner do evento</h2>
+
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleBannerSelect}
+              className="hidden"
+            />
+            {previewUrl ? (
+              <div className="relative">
+                <img
+                  src={previewUrl}
+                  alt="Banner preview"
+                  className="w-full h-48 object-cover rounded-lg"
+                />
+                <button
+                  type="button"
+                  onClick={removeBanner}
+                  className="absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-[#1688cd] hover:text-[#1688cd] transition-colors cursor-pointer"
+              >
+                <Upload size={32} />
+                <span className="text-sm font-medium">Clique para enviar uma imagem</span>
+                <span className="text-xs">JPG, PNG ou WebP (max 5MB)</span>
+              </button>
+            )}
+            {previewUrl && !bannerFile && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="mt-2 text-sm text-[#1688cd] hover:underline cursor-pointer"
+              >
+                Trocar imagem
+              </button>
+            )}
+            {bannerFile && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="mt-2 text-sm text-[#1688cd] hover:underline cursor-pointer"
+              >
+                Trocar imagem
+              </button>
+            )}
+          </div>
+        </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
           <h2 className="text-lg font-semibold text-gray-900">Informações básicas</h2>
