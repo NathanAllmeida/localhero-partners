@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(npm create:*)",
+      "Bash(cp:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vite:*)"
+    ],
+    "additionalDirectories": [
+      "/mnt/c/xampp/htdocs/localhero-app",
+      "/mnt/c/xampp/htdocs/localhero-api",
+      "/mnt/c/xampp/htdocs/localhero-lp"
+    ]
+  }
+}
