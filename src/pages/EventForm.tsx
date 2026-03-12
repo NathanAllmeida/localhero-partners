@@ -4,6 +4,16 @@ import { ArrowLeft, Upload, X } from 'lucide-react'
 import { createEvent, getEvent, updateEvent, uploadBanner, type Event } from '@/services/events'
 import { ApiError } from '@/lib/api'
 
+function toDatetimeLocal(val: string | null): string {
+  if (!val) return ''
+  // Already has time component
+  if (val.includes('T') || val.includes(' ')) {
+    return val.replace(' ', 'T').slice(0, 16)
+  }
+  // Date only — append midnight
+  return val + 'T00:00'
+}
+
 export function EventFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -44,11 +54,11 @@ export function EventFormPage() {
             description: e.description || '',
             short_description: e.short_description || '',
             event_type: e.event_type,
-            start_date: e.start_date || '',
-            end_date: e.end_date || '',
-            event_date: e.event_date || '',
-            registration_start_date: e.registration_start_date || '',
-            registration_end_date: e.registration_end_date || '',
+            start_date: toDatetimeLocal(e.start_date),
+            end_date: toDatetimeLocal(e.end_date),
+            event_date: toDatetimeLocal(e.event_date),
+            registration_start_date: toDatetimeLocal(e.registration_start_date),
+            registration_end_date: toDatetimeLocal(e.registration_end_date),
             max_participants: e.max_participants ? String(e.max_participants) : '',
             has_ranking: e.has_ranking,
             latitude: e.latitude ? String(e.latitude) : '',
