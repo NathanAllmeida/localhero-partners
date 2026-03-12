@@ -96,7 +96,11 @@ export async function api<T = unknown>(
   const json = await res.json()
 
   if (!res.ok) {
-    throw new ApiError(json.message || 'Erro desconhecido', res.status, json)
+    const errorMessage =
+      json.message ||
+      (json.messages && (json.messages.error || Object.values(json.messages)[0])) ||
+      'Erro desconhecido'
+    throw new ApiError(errorMessage, res.status, json)
   }
 
   return json
