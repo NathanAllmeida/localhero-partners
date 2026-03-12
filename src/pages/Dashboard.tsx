@@ -25,7 +25,7 @@ export function DashboardPage() {
 
   useEffect(() => {
     listEvents()
-      .then((res) => setEvents(res.data))
+      .then((res) => setEvents(res.data.events))
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])

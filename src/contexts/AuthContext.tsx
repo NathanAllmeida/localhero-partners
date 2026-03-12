@@ -29,9 +29,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const token = getAccessToken()
     if (token) {
-      api<User>('/partner/auth/me')
+      api<{ user: User }>('/partner/auth/me')
         .then((res) => {
-          setUser(res.data)
+          setUser(res.data.user)
         })
         .catch(() => {
           clearTokens()

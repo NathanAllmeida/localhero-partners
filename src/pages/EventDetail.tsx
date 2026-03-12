@@ -53,8 +53,8 @@ export function EventDetailPage() {
         getEvent(Number(id)),
         getEventStats(Number(id)).catch(() => null),
       ])
-      setEvent(eventRes.data)
-      if (statsRes) setStats(statsRes.data)
+      setEvent(eventRes.data.event)
+      if (statsRes) setStats(statsRes.data.stats)
     } catch {
       navigate('/events')
     } finally {

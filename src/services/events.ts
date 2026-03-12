@@ -1,4 +1,4 @@
-import { api } from '@/lib/api'
+import { api, uploadFile } from '@/lib/api'
 
 export interface Event {
   id: number
@@ -95,11 +95,19 @@ export interface EventMission {
 }
 
 export interface EventStats {
-  total_registrations: number
-  confirmed_registrations: number
-  total_revenue: number
-  partner_amount: number
-  platform_fee: number
+  registrations: {
+    total: number
+    confirmed: number
+    pending: number
+    cancelled: number
+  }
+  financial: {
+    total_revenue: number
+    total_platform_fee: number
+    total_partner_amount: number
+  }
+  influencers: Array<{ name: string; slug: string; registration_count: number }>
+  plan_distribution: Array<{ plan_name: string; count: number }>
 }
 
 export interface LeaderboardEntry {
@@ -115,15 +123,18 @@ export interface LeaderboardEntry {
 }
 
 // Events
-export const listEvents = () => api<Event[]>('/partner/events')
+export const listEvents = () => api<{ events: Event[] }>('/partner/events')
 
-export const getEvent = (id: number) => api<Event>(`/partner/events/${id}`)
+export const getEvent = (id: number) => api<{ event: Event }>(`/partner/events/${id}`)
 
 export const createEvent = (data: Partial<Event>) =>
-  api<Event>('/partner/events', { method: 'POST', body: JSON.stringify(data) })
+  api<{ event: Event }>('/partner/events', { method: 'POST', body: JSON.stringify(data) })
 
 export const updateEvent = (id: number, data: Partial<Event>) =>
-  api<Event>(`/partner/events/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+  api<{ event: Event }>(`/partner/events/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+
+export const uploadBanner = (eventId: number, file: File) =>
+  uploadFile<{ event: Event }>(`/partner/events/${eventId}/banner`, file, 'banner_image')
 
 export const publishEvent = (id: number) =>
   api(`/partner/events/${id}/publish`, { method: 'POST' })
@@ -136,39 +147,39 @@ export const completeEvent = (id: number) =>
 
 // Plans
 export const listPlans = (eventId: number) =>
-  api<EventPlan[]>(`/partner/events/${eventId}/plans`)
+  api<{ plans: EventPlan[] }>(`/partner/events/${eventId}/plans`)
 
 export const createPlan = (eventId: number, data: Partial<EventPlan>) =>
-  api<EventPlan>(`/partner/events/${eventId}/plans`, { method: 'POST', body: JSON.stringify(data) })
+  api<{ plan: EventPlan }>(`/partner/events/${eventId}/plans`, { method: 'POST', body: JSON.stringify(data) })
 
 export const updatePlan = (eventId: number, planId: number, data: Partial<EventPlan>) =>
-  api<EventPlan>(`/partner/events/${eventId}/plans/${planId}`, { method: 'PUT', body: JSON.stringify(data) })
+  api<{ plan: EventPlan }>(`/partner/events/${eventId}/plans/${planId}`, { method: 'PUT', body: JSON.stringify(data) })
 
 export const deletePlan = (eventId: number, planId: number) =>
   api(`/partner/events/${eventId}/plans/${planId}`, { method: 'DELETE' })
 
 // Form Fields
 export const listFormFields = (eventId: number) =>
-  api<EventFormField[]>(`/partner/events/${eventId}/form-fields`)
+  api<{ form_fields: EventFormField[] }>(`/partner/events/${eventId}/form-fields`)
 
 export const createFormField = (eventId: number, data: Partial<EventFormField>) =>
-  api<EventFormField>(`/partner/events/${eventId}/form-fields`, { method: 'POST', body: JSON.stringify(data) })
+  api<{ form_field: EventFormField }>(`/partner/events/${eventId}/form-fields`, { method: 'POST', body: JSON.stringify(data) })
 
 export const updateFormField = (eventId: number, fieldId: number, data: Partial<EventFormField>) =>
-  api<EventFormField>(`/partner/events/${eventId}/form-fields/${fieldId}`, { method: 'PUT', body: JSON.stringify(data) })
+  api<{ form_field: EventFormField }>(`/partner/events/${eventId}/form-fields/${fieldId}`, { method: 'PUT', body: JSON.stringify(data) })
 
 export const deleteFormField = (eventId: number, fieldId: number) =>
   api(`/partner/events/${eventId}/form-fields/${fieldId}`, { method: 'DELETE' })
 
 // Influencers
 export const listInfluencers = (eventId: number) =>
-  api<EventInfluencer[]>(`/partner/events/${eventId}/influencers`)
+  api<{ influencers: EventInfluencer[] }>(`/partner/events/${eventId}/influencers`)
 
 export const createInfluencer = (eventId: number, data: Partial<EventInfluencer>) =>
-  api<EventInfluencer>(`/partner/events/${eventId}/influencers`, { method: 'POST', body: JSON.stringify(data) })
+  api<{ influencer: EventInfluencer }>(`/partner/events/${eventId}/influencers`, { method: 'POST', body: JSON.stringify(data) })
 
 export const updateInfluencer = (eventId: number, infId: number, data: Partial<EventInfluencer>) =>
-  api<EventInfluencer>(`/partner/events/${eventId}/influencers/${infId}`, { method: 'PUT', body: JSON.stringify(data) })
+  api<{ influencer: EventInfluencer }>(`/partner/events/${eventId}/influencers/${infId}`, { method: 'PUT', body: JSON.stringify(data) })
 
 export const deleteInfluencer = (eventId: number, infId: number) =>
   api(`/partner/events/${eventId}/influencers/${infId}`, { method: 'DELETE' })
@@ -179,30 +190,30 @@ export const listRegistrations = (eventId: number, params?: { page?: number; per
   if (params?.page) query.set('page', String(params.page))
   if (params?.per_page) query.set('per_page', String(params.per_page))
   if (params?.status) query.set('status', params.status)
-  return api<{ registrations: EventRegistration[]; total: number }>(`/partner/events/${eventId}/registrations?${query}`)
+  return api<{ registrations: EventRegistration[]; pagination: { page: number; per_page: number; total: number; pages: number } }>(`/partner/events/${eventId}/registrations?${query}`)
 }
 
 // Stats
 export const getEventStats = (eventId: number) =>
-  api<EventStats>(`/partner/events/${eventId}/stats`)
+  api<{ stats: EventStats }>(`/partner/events/${eventId}/stats`)
 
 // Leaderboard
 export const getEventLeaderboard = (eventId: number, params?: { page?: number; per_page?: number }) => {
   const query = new URLSearchParams()
   if (params?.page) query.set('page', String(params.page))
   if (params?.per_page) query.set('per_page', String(params.per_page))
-  return api<{ leaderboard: LeaderboardEntry[]; total: number }>(`/partner/events/${eventId}/leaderboard?${query}`)
+  return api<{ leaderboard: LeaderboardEntry[] }>(`/partner/events/${eventId}/leaderboard?${query}`)
 }
 
 // Missions
 export const listMissions = (eventId: number) =>
-  api<EventMission[]>(`/partner/events/${eventId}/missions`)
+  api<{ missions: EventMission[] }>(`/partner/events/${eventId}/missions`)
 
 export const createMission = (eventId: number, data: Partial<EventMission>) =>
-  api<EventMission>(`/partner/events/${eventId}/missions`, { method: 'POST', body: JSON.stringify(data) })
+  api<{ mission: EventMission }>(`/partner/events/${eventId}/missions`, { method: 'POST', body: JSON.stringify(data) })
 
 export const updateMission = (eventId: number, missionId: number, data: Partial<EventMission>) =>
-  api<EventMission>(`/partner/events/${eventId}/missions/${missionId}`, { method: 'PUT', body: JSON.stringify(data) })
+  api<{ mission: EventMission }>(`/partner/events/${eventId}/missions/${missionId}`, { method: 'PUT', body: JSON.stringify(data) })
 
 export const deleteMission = (eventId: number, missionId: number) =>
   api(`/partner/events/${eventId}/missions/${missionId}`, { method: 'DELETE' })

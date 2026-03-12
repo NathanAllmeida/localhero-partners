@@ -27,7 +27,7 @@ export function EventsPage() {
 
   useEffect(() => {
     listEvents()
-      .then((res) => setEvents(res.data))
+      .then((res) => setEvents(res.data.events))
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])

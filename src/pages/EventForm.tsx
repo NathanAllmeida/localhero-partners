@@ -34,7 +34,7 @@ export function EventFormPage() {
       setLoading(true)
       getEvent(Number(id))
         .then((res) => {
-          const e = res.data
+          const e = res.data.event
           setForm({
             name: e.name || '',
             description: e.description || '',
@@ -87,7 +87,7 @@ export function EventFormPage() {
         await updateEvent(Number(id), payload)
       } else {
         const res = await createEvent(payload)
-        navigate(`/events/${res.data.id}`)
+        navigate(`/events/${res.data.event.id}`)
         return
       }
       navigate(`/events/${id}`)

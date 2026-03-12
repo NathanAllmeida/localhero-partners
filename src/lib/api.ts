@@ -106,6 +106,48 @@ export async function api<T = unknown>(
   return json
 }
 
+export async function uploadFile<T = unknown>(
+  endpoint: string,
+  file: File,
+  fieldName: string = 'file'
+): Promise<ApiResponse<T>> {
+  const formData = new FormData()
+  formData.append(fieldName, file)
+
+  const headers: Record<string, string> = {}
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`
+  }
+
+  let res = await fetch(`${API_BASE}${endpoint}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  })
+
+  if (res.status === 401 && refreshToken) {
+    const newToken = await refreshAccessToken()
+    headers['Authorization'] = `Bearer ${newToken}`
+    res = await fetch(`${API_BASE}${endpoint}`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    })
+  }
+
+  const json = await res.json()
+
+  if (!res.ok) {
+    const errorMessage =
+      json.message ||
+      (json.messages && (json.messages.error || Object.values(json.messages)[0])) ||
+      'Erro desconhecido'
+    throw new ApiError(errorMessage, res.status, json)
+  }
+
+  return json
+}
+
 export class ApiError extends Error {
   status: number
   data: unknown
