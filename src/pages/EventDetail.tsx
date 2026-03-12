@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
-  ArrowLeft, Edit, Users, DollarSign, Trophy,
+  ArrowLeft, Edit, Users, Trophy,
   Target, Megaphone, FileText, Send, XCircle, CheckCircle,
 } from 'lucide-react'
 import {
