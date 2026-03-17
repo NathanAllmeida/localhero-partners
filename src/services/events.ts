@@ -21,6 +21,11 @@ export interface Event {
   max_participants: number | null
   participant_count: number
   has_ranking: boolean
+  has_group: boolean
+  group_id: number | null
+  group_feed_enabled: boolean
+  group_comments_enabled: boolean
+  group_visible_in_listing: boolean
   created_at: string
 }
 
@@ -122,6 +127,25 @@ export interface LeaderboardEntry {
   rank_position: number
 }
 
+export interface EventGroupSettings {
+  has_group: boolean
+  group_id: number | null
+  group_feed_enabled: boolean
+  group_comments_enabled: boolean
+  group_visible_in_listing: boolean
+}
+
+export interface PinnedMessage {
+  id: number
+  event_id: number
+  title: string
+  content: string | null
+  link_url: string | null
+  sort_order: number
+  is_active: boolean
+  created_at: string
+}
+
 // Events
 export const listEvents = () => api<{ events: Event[] }>('/partner/events')
 
@@ -217,3 +241,28 @@ export const updateMission = (eventId: number, missionId: number, data: Partial<
 
 export const deleteMission = (eventId: number, missionId: number) =>
   api(`/partner/events/${eventId}/missions/${missionId}`, { method: 'DELETE' })
+
+// Event Group (Community)
+export const getGroupSettings = (eventId: number) =>
+  api<EventGroupSettings>(`/partner/events/${eventId}/group`)
+
+export const updateGroupSettings = (eventId: number, data: Partial<EventGroupSettings>) =>
+  api<EventGroupSettings>(`/partner/events/${eventId}/group`, { method: 'PUT', body: JSON.stringify(data) })
+
+export const enableEventGroup = (eventId: number) =>
+  api<{ group_id: number }>(`/partner/events/${eventId}/group/enable`, { method: 'POST' })
+
+export const disableEventGroup = (eventId: number) =>
+  api(`/partner/events/${eventId}/group/disable`, { method: 'POST' })
+
+export const listPinnedMessages = (eventId: number) =>
+  api<{ pinned_messages: PinnedMessage[] }>(`/partner/events/${eventId}/group/pinned`)
+
+export const createPinnedMessage = (eventId: number, data: Partial<PinnedMessage>) =>
+  api<{ pinned_message: PinnedMessage }>(`/partner/events/${eventId}/group/pinned`, { method: 'POST', body: JSON.stringify(data) })
+
+export const updatePinnedMessage = (eventId: number, msgId: number, data: Partial<PinnedMessage>) =>
+  api<{ pinned_message: PinnedMessage }>(`/partner/events/${eventId}/group/pinned/${msgId}`, { method: 'PUT', body: JSON.stringify(data) })
+
+export const deletePinnedMessage = (eventId: number, msgId: number) =>
+  api(`/partner/events/${eventId}/group/pinned/${msgId}`, { method: 'DELETE' })

@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft, Edit, Users, Trophy,
   Target, Megaphone, FileText, Send, XCircle, CheckCircle,
-  Plus, Trash2, CreditCard, Loader2, ClipboardList,
+  Plus, Trash2, CreditCard, ClipboardList, MessageSquare,
 } from 'lucide-react'
 import {
   getEvent, getEventStats, publishEvent, cancelEvent, completeEvent,
@@ -12,8 +12,11 @@ import {
   listInfluencers, createInfluencer, updateInfluencer, deleteInfluencer,
   listRegistrations, listMissions, createMission, updateMission, deleteMission,
   getEventLeaderboard,
+  getGroupSettings, updateGroupSettings, enableEventGroup, disableEventGroup,
+  listPinnedMessages, createPinnedMessage, updatePinnedMessage, deletePinnedMessage,
   type Event, type EventStats, type EventPlan, type EventFormField,
   type EventInfluencer, type EventRegistration, type EventMission, type LeaderboardEntry,
+  type EventGroupSettings, type PinnedMessage,
 } from '@/services/events'
 
 const statusLabels: Record<string, string> = {
@@ -40,6 +43,7 @@ const tabs = [
   { key: 'leaderboard', label: 'Ranking', icon: Trophy },
   { key: 'missions', label: 'Missões', icon: Target },
   { key: 'influencers', label: 'Influenciadores', icon: Megaphone },
+  { key: 'community', label: 'Comunidade', icon: MessageSquare },
 ]
 
 export function EventDetailPage() {
@@ -226,6 +230,7 @@ export function EventDetailPage() {
       {activeTab === 'leaderboard' && <LeaderboardTab eventId={eventId} />}
       {activeTab === 'missions' && <MissionsTab eventId={eventId} />}
       {activeTab === 'influencers' && <InfluencersTab eventId={eventId} />}
+      {activeTab === 'community' && <CommunityTab eventId={eventId} />}
     </div>
   )
 }
@@ -1087,6 +1092,275 @@ function InfluencersTab({ eventId }: { eventId: number }) {
             </div>
           ))}
         </div>
+      )}
+    </div>
+  )
+}
+
+// ─── COMMUNITY TAB ────────────────────────────────────────────
+
+function CommunityTab({ eventId }: { eventId: number }) {
+  const [settings, setSettings] = useState<EventGroupSettings | null>(null)
+  const [pinnedMessages, setPinnedMessages] = useState<PinnedMessage[]>([])
+  const [loading, setLoading] = useState(true)
+  const [toggling, setToggling] = useState(false)
+  const [showPinnedForm, setShowPinnedForm] = useState(false)
+  const [editingPinned, setEditingPinned] = useState<PinnedMessage | null>(null)
+  const [pinnedForm, setPinnedForm] = useState({ title: '', content: '', link_url: '', sort_order: 0, is_active: true })
+
+  useEffect(() => {
+    loadSettings()
+  }, [eventId])
+
+  async function loadSettings() {
+    setLoading(true)
+    try {
+      const res = await getGroupSettings(eventId)
+      setSettings(res.data)
+      if (res.data.has_group) {
+        const pinnedRes = await listPinnedMessages(eventId)
+        setPinnedMessages(pinnedRes.data.pinned_messages)
+      }
+    } catch { /* */ }
+    setLoading(false)
+  }
+
+  async function handleToggleGroup() {
+    if (!settings) return
+    setToggling(true)
+    try {
+      if (settings.has_group) {
+        await disableEventGroup(eventId)
+      } else {
+        await enableEventGroup(eventId)
+      }
+      await loadSettings()
+    } catch { /* */ }
+    setToggling(false)
+  }
+
+  async function handleUpdateSetting(key: keyof EventGroupSettings, value: boolean) {
+    try {
+      await updateGroupSettings(eventId, { [key]: value })
+      setSettings(prev => prev ? { ...prev, [key]: value } : prev)
+    } catch { /* */ }
+  }
+
+  async function handleSubmitPinned(e: FormEvent) {
+    e.preventDefault()
+    try {
+      if (editingPinned) {
+        await updatePinnedMessage(eventId, editingPinned.id, pinnedForm)
+      } else {
+        await createPinnedMessage(eventId, pinnedForm)
+      }
+      setShowPinnedForm(false)
+      setEditingPinned(null)
+      setPinnedForm({ title: '', content: '', link_url: '', sort_order: 0, is_active: true })
+      const res = await listPinnedMessages(eventId)
+      setPinnedMessages(res.data.pinned_messages)
+    } catch { /* */ }
+  }
+
+  function openEditPinned(msg: PinnedMessage) {
+    setEditingPinned(msg)
+    setPinnedForm({
+      title: msg.title,
+      content: msg.content ?? '',
+      link_url: msg.link_url ?? '',
+      sort_order: msg.sort_order,
+      is_active: msg.is_active,
+    })
+    setShowPinnedForm(true)
+  }
+
+  async function handleDeletePinned(msgId: number) {
+    if (!confirm('Remover esta mensagem fixada?')) return
+    try {
+      await deletePinnedMessage(eventId, msgId)
+      setPinnedMessages(prev => prev.filter(m => m.id !== msgId))
+    } catch { /* */ }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 size={24} className="animate-spin text-gray-400" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Toggle principal */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Comunidade do Evento</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Habilite um grupo de comunidade para os participantes do evento.
+            </p>
+          </div>
+          <button
+            onClick={handleToggleGroup}
+            disabled={toggling}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+              settings?.has_group ? 'bg-[#07202f]' : 'bg-gray-200'
+            } disabled:opacity-50`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${
+                settings?.has_group ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* Settings (when enabled) */}
+      {settings?.has_group && (
+        <>
+          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">Configurações</h3>
+
+            <label className="flex items-center justify-between">
+              <span className="text-sm text-gray-700">Feed habilitado</span>
+              <button
+                onClick={() => handleUpdateSetting('group_feed_enabled', !settings.group_feed_enabled)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                  settings.group_feed_enabled ? 'bg-[#07202f]' : 'bg-gray-200'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${settings.group_feed_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </label>
+
+            <label className="flex items-center justify-between">
+              <span className="text-sm text-gray-700">Comentários habilitados</span>
+              <button
+                onClick={() => handleUpdateSetting('group_comments_enabled', !settings.group_comments_enabled)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                  settings.group_comments_enabled ? 'bg-[#07202f]' : 'bg-gray-200'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${settings.group_comments_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </label>
+
+            <label className="flex items-center justify-between">
+              <span className="text-sm text-gray-700">Visível na listagem de grupos</span>
+              <button
+                onClick={() => handleUpdateSetting('group_visible_in_listing', !settings.group_visible_in_listing)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                  settings.group_visible_in_listing ? 'bg-[#07202f]' : 'bg-gray-200'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${settings.group_visible_in_listing ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </label>
+          </div>
+
+          {/* Pinned Messages */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Mensagens Fixadas</h3>
+              <button
+                onClick={() => { setEditingPinned(null); setPinnedForm({ title: '', content: '', link_url: '', sort_order: 0, is_active: true }); setShowPinnedForm(true) }}
+                className="flex items-center gap-2 px-3 py-2 bg-[#07202f] text-white rounded-lg text-sm font-medium hover:bg-[#0a2d40] transition-colors cursor-pointer"
+              >
+                <Plus size={16} />
+                Adicionar
+              </button>
+            </div>
+
+            {showPinnedForm && (
+              <form onSubmit={handleSubmitPinned} className="border border-gray-200 rounded-lg p-4 mb-4 space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Título *</label>
+                  <input
+                    type="text"
+                    required
+                    value={pinnedForm.title}
+                    onChange={e => setPinnedForm(f => ({ ...f, title: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#07202f]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Conteúdo</label>
+                  <textarea
+                    value={pinnedForm.content}
+                    onChange={e => setPinnedForm(f => ({ ...f, content: e.target.value }))}
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#07202f]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Link (URL)</label>
+                  <input
+                    type="url"
+                    value={pinnedForm.link_url}
+                    onChange={e => setPinnedForm(f => ({ ...f, link_url: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#07202f]"
+                    placeholder="https://..."
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ordem</label>
+                    <input
+                      type="number"
+                      value={pinnedForm.sort_order}
+                      onChange={e => setPinnedForm(f => ({ ...f, sort_order: Number(e.target.value) }))}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#07202f]"
+                    />
+                  </div>
+                  <div className="flex items-end pb-1">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={pinnedForm.is_active}
+                        onChange={e => setPinnedForm(f => ({ ...f, is_active: e.target.checked }))}
+                        className="rounded"
+                      />
+                      <span className="text-sm text-gray-700">Ativo</span>
+                    </label>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button type="submit" className="flex items-center gap-2 px-4 py-2 bg-[#07202f] text-white rounded-lg text-sm font-medium hover:bg-[#0a2d40] transition-colors cursor-pointer">
+                    <Send size={14} />
+                    {editingPinned ? 'Atualizar' : 'Criar'}
+                  </button>
+                  <button type="button" onClick={() => { setShowPinnedForm(false); setEditingPinned(null) }} className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer">
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {pinnedMessages.length === 0 ? (
+              <p className="text-gray-400 text-sm">Nenhuma mensagem fixada.</p>
+            ) : (
+              <div className="space-y-3">
+                {pinnedMessages.map(msg => (
+                  <div key={msg.id} className={`border rounded-lg p-4 ${msg.is_active ? 'border-gray-200' : 'border-gray-100 opacity-60'}`}>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="font-medium text-gray-900">{msg.title}</h4>
+                        {msg.content && <p className="text-sm text-gray-600 mt-1">{msg.content}</p>}
+                        {msg.link_url && <a href={msg.link_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline mt-1 inline-block">{msg.link_url}</a>}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => openEditPinned(msg)} className="p-2 text-gray-400 hover:text-gray-600 cursor-pointer"><Edit size={14} /></button>
+                        <button onClick={() => handleDeletePinned(msg.id)} className="p-2 text-gray-400 hover:text-red-600 cursor-pointer"><Trash2 size={14} /></button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   )
