@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft, Edit, Users, Trophy,
   Target, Megaphone, FileText, Send, XCircle, CheckCircle,
-  Plus, Trash2, CreditCard, ClipboardList, MessageSquare,
+  Plus, Trash2, CreditCard, Loader2, ClipboardList, MessageSquare,
 } from 'lucide-react'
 import {
   getEvent, getEventStats, publishEvent, cancelEvent, completeEvent,
